@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "661357683673",
+    "project_id": "quickqr-5717b",
+    "storage_bucket": "quickqr-5717b.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:661357683673:android:97feef8af4e0ad32fb6fc8",
+        "android_client_info": {
+          "package_name": "com.example.quickqr"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD4U-25FyjV8feWKcBB0SXMDT5JOlO2nDo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:661357683673:android:8e1913a7ab87dae8fb6fc8",
+        "android_client_info": {
+          "package_name": "com.example.quickqrapp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD4U-25FyjV8feWKcBB0SXMDT5JOlO2nDo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
