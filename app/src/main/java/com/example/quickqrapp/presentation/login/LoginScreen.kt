@@ -1,8 +1,8 @@
 package com.example.quickqrapp.presentation.login
 
-import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -31,6 +31,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.navigation.NavHostController
 import com.example.quickqrapp.R
 import com.example.quickqrapp.ui.theme.Black
 import com.example.quickqrapp.ui.theme.Blue
@@ -40,9 +41,10 @@ import com.example.quickqrapp.ui.theme.White
 import com.google.firebase.auth.FirebaseAuth
 
 @Composable
-fun LoginScreen(auth: FirebaseAuth) {
+fun LoginScreen(auth: FirebaseAuth, navigateToHome: () -> Unit, navController: NavHostController) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
 
     Column(
         modifier = Modifier
@@ -59,6 +61,7 @@ fun LoginScreen(auth: FirebaseAuth) {
                 modifier = Modifier
                     .padding(vertical = 24.dp)
                     .size(24.dp)
+                    .clickable { navController.popBackStack() }
             )
             Spacer(modifier = Modifier.weight(1f))
         }
@@ -120,19 +123,35 @@ fun LoginScreen(auth: FirebaseAuth) {
                 cursorColor = Blue
             ),
         )
-        Spacer(Modifier.height(30.dp))
+        Spacer(Modifier.height(10.dp))
+
+        if (!errorMessage.isNullOrEmpty()) {
+            Text(
+                text = errorMessage ?: "",
+                color = Color.Red,
+                fontSize = 14.sp,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 20.dp)
+            )
+        }
+
         Button(
             onClick = {
-                auth.signInWithEmailAndPassword(email, password).addOnCompleteListener { task ->
-                    if (task.isSuccessful) {
-//                    navigateToHome()
-                        Log.i("aris", "LOGIN OK")
-                    } else {
-                        //Error
-                        Log.i("aris", "LOGIN KO")
-                    }
+                if (email.isBlank() || password.isBlank()) {
+                    errorMessage = "Email та пароль не можуть бути порожніми"
+                } else {
+                    errorMessage = null
+                    auth.signInWithEmailAndPassword(email, password)
+                        .addOnCompleteListener { task ->
+                            if (task.isSuccessful) {
+                                errorMessage = null
+                                navigateToHome()
+                            } else {
+                                errorMessage = "Користувача не знайдено або невірний пароль"
+                            }
+                        }
                 }
-
             },
             modifier = Modifier
                 .fillMaxWidth()

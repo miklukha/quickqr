@@ -3,6 +3,7 @@ package com.example.quickqrapp.presentation.signup
 import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -31,6 +32,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.navigation.NavHostController
 import com.example.quickqrapp.R
 import com.example.quickqrapp.ui.theme.Black
 import com.example.quickqrapp.ui.theme.Blue
@@ -38,11 +40,14 @@ import com.example.quickqrapp.ui.theme.Light
 import com.example.quickqrapp.ui.theme.SelectedField
 import com.example.quickqrapp.ui.theme.White
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.FirebaseAuthInvalidCredentialsException
+import com.google.firebase.auth.FirebaseAuthUserCollisionException
 
 @Composable
-fun SignUpScreen(auth: FirebaseAuth) {
+fun SignUpScreen(auth: FirebaseAuth, navigateToHome: () -> Unit, navController: NavHostController) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
 
     Column(
         modifier = Modifier
@@ -59,6 +64,7 @@ fun SignUpScreen(auth: FirebaseAuth) {
                 modifier = Modifier
                     .padding(vertical = 24.dp)
                     .size(24.dp)
+                    .clickable { navController.popBackStack() }
             )
             Spacer(modifier = Modifier.weight(1f))
         }
@@ -120,20 +126,51 @@ fun SignUpScreen(auth: FirebaseAuth) {
                 cursorColor = Blue
             ),
         )
-        Spacer(Modifier.height(30.dp))
+        Spacer(Modifier.height(10.dp))
+
+        if (!errorMessage.isNullOrEmpty()) {
+            Text(
+                text = errorMessage ?: "",
+                color = Color.Red,
+                fontSize = 14.sp,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 20.dp)
+            )
+        }
+
         Button(
             onClick = {
-                auth.createUserWithEmailAndPassword(email, password).addOnCompleteListener { task ->
-                    if (task.isSuccessful) {
-                        //Registrado
-//                    navigateToHome()
-                        Log.i("aris", "Registro OK")
-                    } else {
-                        //Error
-                        Log.i("aris", "Registro ko")
-                    }
-                }
+                if (email.isBlank() || password.isBlank()) {
+                    errorMessage = "Email та пароль не можуть бути порожніми"
+                } else {
+                    errorMessage = null
+                    auth.createUserWithEmailAndPassword(email, password)
+                        .addOnCompleteListener { task ->
+                            if (task.isSuccessful) {
+                                navigateToHome()
+//                                Log.i("log", "Registration OK")
+                            } else {
+                                // Error
+                                when (val exception = task.exception) {
+                                    is FirebaseAuthInvalidCredentialsException -> {
+                                        errorMessage =
+                                            "Некоректний формат email чи пароль менше 6 символів."
+                                    }
 
+                                    is FirebaseAuthUserCollisionException -> {
+                                        errorMessage = "Користувач з таким email вже існує"
+                                    }
+
+                                    else -> {
+                                        errorMessage =
+                                            "Сталася помилка під час реєстрації. Спробуйте ще раз"
+                                        Log.e("log", "Error: ${exception?.message}")
+                                    }
+                                }
+                            }
+                        }
+                }
             },
             modifier = Modifier
                 .fillMaxWidth()
