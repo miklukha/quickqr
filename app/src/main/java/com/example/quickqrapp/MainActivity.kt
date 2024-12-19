@@ -2,6 +2,8 @@ package com.example.quickqrapp
 
 import com.example.quickqrapp.ui.theme.QuickQRAppTheme
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -45,12 +47,11 @@ class MainActivity : ComponentActivity() {
 
     override fun onStart() {
         super.onStart()
-        val currentUser = auth.currentUser
-
-        if (currentUser != null) {
-            Log.i("aris", "Estoy logado")
-
-            auth.signOut()
-        }
+        Handler(Looper.getMainLooper()).postDelayed({
+            val currentUser = auth.currentUser
+            if (currentUser != null) {
+                navHostController.navigate("home")
+            }
+        }, 100)
     }
 }

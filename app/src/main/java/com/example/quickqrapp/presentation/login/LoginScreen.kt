@@ -79,7 +79,7 @@ fun LoginScreen(auth: FirebaseAuth, navigateToHome: () -> Unit, navController: N
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(bottom = 8.dp)
-                .height(56.dp)
+                .height(48.dp)
                 .border(
                     width = 1.dp,
                     color = Color.Gray,
@@ -93,7 +93,7 @@ fun LoginScreen(auth: FirebaseAuth, navigateToHome: () -> Unit, navController: N
                 cursorColor = Blue
             ),
         )
-        Spacer(Modifier.height(15.dp))
+        Spacer(Modifier.height(10.dp))
         Text(
             "Пароль",
             color = Black,
@@ -108,7 +108,7 @@ fun LoginScreen(auth: FirebaseAuth, navigateToHome: () -> Unit, navController: N
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(bottom = 8.dp)
-                .height(56.dp)
+                .height(48.dp)
                 .border(
                     width = 1.dp,
                     color = Color.Gray,

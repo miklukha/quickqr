@@ -4,7 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.NavHost
-import com.example.quickqrapp.presentation.home.HomeScreen
+import com.example.quickqrapp.presentation.home.MainScreen
 import com.example.quickqrapp.presentation.initial.InitialScreen
 import com.example.quickqrapp.presentation.login.LoginScreen
 import com.example.quickqrapp.presentation.signup.SignUpScreen
@@ -23,7 +23,6 @@ fun NavigationWrapper(
                 navigateToSignUp = { navHostController.navigate("signUp") })
         }
         composable("logIn") {
-//            LoginScreen(auth) { navHostController.navigate("home") }
             LoginScreen(
                 auth,
                 navigateToHome = { navHostController.navigate("home") },
@@ -31,7 +30,6 @@ fun NavigationWrapper(
             )
         }
         composable("signUp") {
-//            SignUpScreen(auth)
             SignUpScreen(
                 auth,
                 navigateToHome = { navHostController.navigate("home") },
@@ -39,7 +37,7 @@ fun NavigationWrapper(
             )
         }
         composable("home") {
-            HomeScreen(db)
+            MainScreen(db, navigateToInitial = { navHostController.navigate("initial") })
         }
     }
 }
