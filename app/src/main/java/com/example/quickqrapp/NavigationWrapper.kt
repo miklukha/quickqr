@@ -37,7 +37,7 @@ fun NavigationWrapper(
             )
         }
         composable("home") {
-            MainScreen(db, navigateToInitial = { navHostController.navigate("initial") })
+            MainScreen(navigateToInitial = { navHostController.navigate("initial") })
         }
     }
 }

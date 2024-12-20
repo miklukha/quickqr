@@ -16,6 +16,7 @@ val Gray = Color(0xFF393939)
 val Black = Color(0xFF121212)
 val Green = Color(0xFF49dd63)
 val Red = Color(0xFFff0000)
+val BottomMenu = Color(0xFF596869)
 val BackgroundButton = Color(0xFF111111)
 val ShapeButton = Color(0xFF3e3e3e)
 

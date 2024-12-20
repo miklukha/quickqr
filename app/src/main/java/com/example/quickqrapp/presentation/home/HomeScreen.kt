@@ -4,7 +4,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.rememberCoroutineScope
 import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.firestore.FirebaseFirestore
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -15,9 +14,9 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.test.isSelected
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -32,6 +31,7 @@ import kotlinx.coroutines.launch
 import com.example.quickqrapp.presentation.generate.GenerateScreen
 import com.example.quickqrapp.presentation.scan.ScanScreen
 import com.example.quickqrapp.presentation.history.HistoryScreen
+import androidx.compose.material3.ButtonDefaults
 
 sealed class BottomNavItem(val route: String, val icon: Int, val label: String) {
     object Home : BottomNavItem("home", R.drawable.home, "Головна")
@@ -42,7 +42,6 @@ sealed class BottomNavItem(val route: String, val icon: Int, val label: String) 
 
 @Composable
 fun MainScreen(
-    db: FirebaseFirestore,
     navigateToInitial: () -> Unit
 ) {
     val navController = rememberNavController()
@@ -136,55 +135,66 @@ fun HomeContent(navigateToInitial: () -> Unit) {
 fun BottomNavigationBar(navController: NavHostController) {
     val items = listOf(
         BottomNavItem.Home,
-        BottomNavItem.History,
+        BottomNavItem.Scan,
         BottomNavItem.Generate,
-        BottomNavItem.Scan
+        BottomNavItem.History,
     )
 
-    NavigationBar(
-        containerColor = White,
-        modifier = Modifier.height(70.dp),
-    ) {
-        val navBackStackEntry by navController.currentBackStackEntryAsState()
-        val currentRoute = navBackStackEntry?.destination?.route
 
-        items.forEach { item ->
-            NavigationBarItem(
-                icon = {
-                    Icon(
-                        painter = painterResource(id = item.icon),
-                        contentDescription = item.label,
-                        modifier = Modifier
-                            .size(24.dp)
-                            .padding(bottom = 10.dp),
-                        tint = if (currentRoute == item.route) Blue else Black
-                    )
-                },
-                label = {
-                    Text(
-                        text = item.label,
-                        fontSize = 12.sp,
-                        color = if (currentRoute == item.route) Blue else Black
-                    )
-                },
-                selected = currentRoute == item.route,
-                onClick = {
-                    navController.navigate(item.route) {
-                        popUpTo(navController.graph.startDestinationId) {
-                            saveState = true
-                        }
-                        launchSingleTop = true
-                        restoreState = true
-                    }
-                },
-                colors = NavigationBarItemDefaults.colors(
-                    selectedIconColor = Blue,
-                    unselectedIconColor = Black,
-                    selectedTextColor = Blue,
-                    unselectedTextColor = Black,
-                    indicatorColor = White
+    Box(
+        modifier = Modifier
+            .background(Light)
+            .height(70.dp)
+            .drawBehind {
+                drawLine(
+                    color = Gray,
+                    start = Offset(0f, 0f),
+                    end = Offset(size.width, 0f),
+                    strokeWidth = 1.dp.toPx()
                 )
-            )
+            }
+    ) {
+        NavigationBar(
+            containerColor = Light,
+            modifier = Modifier.fillMaxSize()
+        ) {
+            val navBackStackEntry by navController.currentBackStackEntryAsState()
+            val currentRoute = navBackStackEntry?.destination?.route
+
+            items.forEach { item ->
+                NavigationBarItem(
+                    icon = {
+                        Icon(
+                            painter = painterResource(id = item.icon),
+                            contentDescription = item.label,
+                            modifier = Modifier
+                                .size(24.dp)
+                                .padding(bottom = 10.dp),
+                            tint = if (currentRoute == item.route) Blue else Black
+                        )
+                    },
+                    label = {
+                        Text(
+                            text = item.label,
+                            fontSize = 12.sp,
+                            color = if (currentRoute == item.route) Blue else Black
+                        )
+                    },
+                    selected = currentRoute == item.route,
+                    onClick = {
+                        navController.navigate(item.route) {
+                            popUpTo(navController.graph.startDestinationId) {
+                                saveState = true
+                            }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                    },
+                    colors = NavigationBarItemDefaults.colors(
+                        indicatorColor = Light
+                    )
+                )
+            }
         }
     }
 }
