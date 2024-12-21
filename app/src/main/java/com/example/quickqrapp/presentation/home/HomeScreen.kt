@@ -1,9 +1,11 @@
 package com.example.quickqrapp.presentation.home
 
+import android.util.Log
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.rememberCoroutineScope
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.auth
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -32,6 +34,7 @@ import com.example.quickqrapp.presentation.generate.GenerateScreen
 import com.example.quickqrapp.presentation.scan.ScanScreen
 import com.example.quickqrapp.presentation.history.HistoryScreen
 import androidx.compose.material3.ButtonDefaults
+import com.google.firebase.Firebase
 
 sealed class BottomNavItem(val route: String, val icon: Int, val label: String) {
     object Home : BottomNavItem("home", R.drawable.home, "Головна")
@@ -74,6 +77,7 @@ fun MainScreen(
 fun HomeContent(navigateToInitial: () -> Unit) {
     val auth = FirebaseAuth.getInstance()
     val coroutineScope = rememberCoroutineScope()
+    val user = remember { Firebase.auth.currentUser }
 
     Column(
         modifier = Modifier
@@ -103,6 +107,18 @@ fun HomeContent(navigateToInitial: () -> Unit) {
         )
 
         Spacer(modifier = Modifier.weight(1f))
+
+        if (user != null) {
+            Text(
+                text = user.email ?: "Email не доступний",
+                fontSize = 20.sp,
+                color = Black
+            )
+        } else {
+            Log.i("user", "No user is currently logged in.")
+        }
+
+        Spacer(modifier = Modifier.height(20.dp))
 
         Button(
             onClick = {

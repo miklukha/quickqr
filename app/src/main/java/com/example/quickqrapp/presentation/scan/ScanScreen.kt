@@ -1,434 +1,485 @@
 package com.example.quickqrapp.presentation.scan
 
-import java.util.*
-import kotlinx.coroutines.launch
-import androidx.compose.foundation.background
-import com.google.zxing.BinaryBitmap
-import com.google.zxing.MultiFormatReader
-import com.google.zxing.RGBLuminanceSource
-import com.google.zxing.common.HybridBinarizer
-import android.graphics.BitmapFactory
-
 import android.Manifest
+import android.content.Context
 import android.content.pm.PackageManager
 import android.net.Uri
+import android.util.Log
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.layout.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.camera.core.CameraSelector
+import androidx.camera.core.ImageAnalysis
+import androidx.camera.core.ImageProxy
+import androidx.camera.core.Preview
+import androidx.camera.lifecycle.ProcessCameraProvider
+import androidx.camera.view.PreviewView
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import com.example.quickqrapp.R
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.firestore.FirebaseFirestore
-import com.google.mlkit.vision.barcode.BarcodeScanning
-import com.google.mlkit.vision.common.InputImage
-import java.text.SimpleDateFormat
-import java.util.*
-import kotlinx.coroutines.launch
-import androidx.compose.runtime.Composable
-import androidx.compose.foundation.background
-import androidx.camera.core.*
-import androidx.camera.lifecycle.ProcessCameraProvider
-import androidx.camera.view.PreviewView
-import androidx.compose.ui.viewinterop.AndroidView
+import com.example.quickqrapp.presentation.model.QRData
+import com.example.quickqrapp.presentation.model.QRType
 import com.example.quickqrapp.presentation.model.ScanHistory
-import com.google.mlkit.vision.barcode.common.Barcode
-import kotlinx.coroutines.tasks.await
-import java.util.concurrent.ExecutorService
-import java.util.concurrent.Executors
-import kotlin.coroutines.resume
-import kotlin.coroutines.suspendCoroutine
-
-import android.widget.Toast
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.unit.sp
+import com.example.quickqrapp.ui.theme.Black
+import com.example.quickqrapp.ui.theme.Blue
+import com.example.quickqrapp.ui.theme.Gray
 import com.example.quickqrapp.ui.theme.Light
 import com.example.quickqrapp.ui.theme.White
-import com.example.quickqrapp.ui.theme.Blue
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.ui.graphics.painter.Painter
-import androidx.compose.ui.text.style.TextAlign
-import com.example.quickqrapp.ui.theme.BackgroundButton
-import com.example.quickqrapp.ui.theme.Black
-import com.example.quickqrapp.ui.theme.Gray
-import androidx.compose.ui.platform.LocalContext
-
-
-import com.example.quickqrapp.ui.theme.Red
-import com.example.quickqrapp.ui.theme.ShapeButton
-
-import kotlinx.coroutines.launch
-
-// !!! DON'T DELETE
-import com.google.common.util.concurrent.ListenableFuture
+import com.google.firebase.Firebase
+import com.google.firebase.auth.auth
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.mlkit.vision.barcode.BarcodeScanning
+import com.google.mlkit.vision.barcode.common.Barcode
+import com.google.mlkit.vision.common.InputImage
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 @Composable
 fun ScanScreen() {
-    var scannedText by remember { mutableStateOf("Скануйте QR-код, щоб переглянути результати тут") }
+    var scannedData by remember { mutableStateOf<QRData?>(null) }
     val context = LocalContext.current
+    var showCamera by remember { mutableStateOf(false) }
+    val user = remember { Firebase.auth.currentUser }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Light)
-            .padding(horizontal = 15.dp)
-            .padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Spacer(modifier = Modifier.weight(1f))
-        Image(
-            painter = painterResource(id = R.drawable.logo),
-            contentDescription = "",
-            modifier = Modifier.clip(CircleShape)
+    var hasCameraPermission by remember {
+        mutableStateOf(
+            ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.CAMERA
+            ) == PackageManager.PERMISSION_GRANTED
         )
+    }
 
-        Spacer(modifier = Modifier.weight(1f))
-        Text(
-            "Cпосіб сканування",
-            color = Black,
-            fontSize = 24.sp,
-            fontWeight = FontWeight.Bold
-        )
-        Spacer(modifier = Modifier.height(15.dp))
-        Button(
-            onClick = { },
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(48.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = Blue)
-        ) {
-            Text(
-                text = "Камера",
-                color = White,
-                fontWeight = FontWeight.Bold,
-                fontSize = 16.sp,
-                letterSpacing = 0.5.sp
-            )
+    val launcher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted: Boolean ->
+        hasCameraPermission = isGranted
+        if (isGranted) {
+            showCamera = true
         }
-        Spacer(modifier = Modifier.height(10.dp))
-        Button(
-            onClick = { },
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(48.dp)
-                .border(1.dp, Blue, CircleShape),
-            colors = ButtonDefaults.buttonColors(containerColor = Light)
-        ) {
-            Text(
-                text = "Галерея",
-                color = Blue,
-                fontWeight = FontWeight.Bold,
-                fontSize = 16.sp,
-                letterSpacing = 0.5.sp
-            )
-        }
-        Spacer(modifier = Modifier.weight(1f))
-        Text(
-            text = "Відсканована інформація",
-            color = Black,
-            fontSize = 24.sp,
-            fontWeight = FontWeight.Bold,
-        )
-        Spacer(modifier = Modifier.height(15.dp))
-        Card(
-            shape = RoundedCornerShape(8.dp),
-            border = BorderStroke(1.dp, Gray),
-            modifier = Modifier
-                .fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = Light)
-        ) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Text(
-                    text = scannedText,
-                    fontSize = 16.sp,
-                    color = Gray
-                )
+    }
+
+    val galleryLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        uri?.let {
+            processImageFromGallery(context, it) { qrData ->
+                scannedData = qrData
+                if (user != null) {
+                    saveToFirestore(user.uid, qrData)
+                }
             }
         }
-        Spacer(modifier = Modifier.height(10.dp))
-        Button(
-            onClick = {
-                val clipboardManager =
-                    context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
-                val clipData =
-                    android.content.ClipData.newPlainText("Scanned QR code", scannedText)
-                clipboardManager.setPrimaryClip(clipData)
+    }
 
-                Toast.makeText(context, "Текст скопійовано", Toast.LENGTH_SHORT).show()
-            },
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(48.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = Light)
-        ) {
+    if (showCamera) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            CameraPreview(
+                onQrCodeScanned = { qrData ->
+                    scannedData = qrData
+                    if (user != null) {
+                        saveToFirestore(user.uid, qrData)
+                    }
+                    showCamera = false
+                },
+                onClose = { showCamera = false }
+            )
+
+            IconButton(
+                onClick = { showCamera = false },
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(16.dp)
+                    .background(Black.copy(alpha = 0.5f), shape = CircleShape)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Close,
+                    contentDescription = "Закрити",
+                    tint = White
+                )
+            }
+
+            Box(
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .size(250.dp)
+                    .border(2.dp, White, RoundedCornerShape(16.dp))
+            )
+
             Text(
-                text = "Скопіювати текст", color = Blue,
-                fontWeight = FontWeight.Bold,
-                fontSize = 16.sp,
-                letterSpacing = 0.5.sp
+                text = "Наведіть камеру на QR-код",
+                color = White,
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 32.dp)
+                    .background(Black.copy(alpha = 0.5f), shape = RoundedCornerShape(8.dp))
+                    .padding(horizontal = 16.dp, vertical = 8.dp)
             )
         }
-        Spacer(modifier = Modifier.weight(1f))
+    } else {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Light)
+                .padding(horizontal = 15.dp)
+                .padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Spacer(modifier = Modifier.weight(1f))
+            Image(
+                painter = painterResource(id = R.drawable.logo),
+                contentDescription = "",
+                modifier = Modifier.clip(CircleShape)
+            )
+
+            Spacer(modifier = Modifier.weight(1f))
+            Text(
+                "Cпосіб сканування",
+                color = Black,
+                fontSize = 24.sp,
+                fontWeight = FontWeight.Bold
+            )
+            Spacer(modifier = Modifier.height(15.dp))
+            Button(
+                onClick = {
+                    if (hasCameraPermission) {
+                        showCamera = true
+                    } else {
+                        launcher.launch(Manifest.permission.CAMERA)
+                    }
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(48.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Blue)
+            ) {
+                Text(
+                    text = "Камера",
+                    color = White,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 16.sp,
+                    letterSpacing = 0.5.sp
+                )
+            }
+            Spacer(modifier = Modifier.height(10.dp))
+            Button(
+                onClick = { galleryLauncher.launch("image/*") },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(48.dp)
+                    .border(1.dp, Blue, CircleShape),
+                colors = ButtonDefaults.buttonColors(containerColor = Light)
+            ) {
+                Text(
+                    text = "Галерея",
+                    color = Blue,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 16.sp,
+                    letterSpacing = 0.5.sp
+                )
+            }
+
+            Spacer(modifier = Modifier.weight(1f))
+            Text(
+                text = "Відсканована інформація",
+                color = Black,
+                fontSize = 24.sp,
+                fontWeight = FontWeight.Bold,
+            )
+            Spacer(modifier = Modifier.height(15.dp))
+            Card(
+                shape = RoundedCornerShape(8.dp),
+                border = BorderStroke(1.dp, Gray),
+                modifier = Modifier
+                    .fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = Light)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        text = scannedData?.displayText
+                            ?: "Скануйте QR-код, щоб переглянути результати тут",
+                        fontSize = 16.sp,
+                        color = Gray
+                    )
+                    if (scannedData != null) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "Тип: ${scannedData?.type?.name}",
+                            fontSize = 14.sp,
+                            color = Gray
+                        )
+                    }
+                }
+            }
+            Spacer(modifier = Modifier.height(10.dp))
+            Button(
+                onClick = {
+                    val clipboardManager =
+                        context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                    val clipData =
+                        android.content.ClipData.newPlainText(
+                            "Scanned QR code",
+                            scannedData?.displayText ?: ""
+                        )
+                    clipboardManager.setPrimaryClip(clipData)
+
+                    Toast.makeText(context, "Текст скопійовано", Toast.LENGTH_SHORT).show()
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(48.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Light)
+            ) {
+                Text(
+                    text = "Скопіювати текст", color = Blue,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 16.sp,
+                    letterSpacing = 0.5.sp
+                )
+            }
+            Spacer(modifier = Modifier.weight(1f))
+        }
     }
 }
 
+@Composable
+fun CameraPreview(
+    onQrCodeScanned: (QRData) -> Unit,
+    onClose: () -> Unit
+) {
+    val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
+    val cameraProviderFuture = remember { ProcessCameraProvider.getInstance(context) }
+    val previewView = remember { PreviewView(context) }
 
-//@Composable
-//fun ScanScreen() {
-//    var showCamera by remember { mutableStateOf(false) }
-//    var qrContent by remember { mutableStateOf<String?>(null) }
-//    val context = LocalContext.current
-//    val coroutineScope = rememberCoroutineScope()
-//    val db = FirebaseFirestore.getInstance()
-//    val auth = FirebaseAuth.getInstance()
-//
-//    val cameraPermissionLauncher = rememberLauncherForActivityResult(
-//        ActivityResultContracts.RequestPermission()
-//    ) { isGranted ->
-//        if (isGranted) {
-//            showCamera = true
-//        }
-//    }
-//
-//    val galleryLauncher = rememberLauncherForActivityResult(
-//        ActivityResultContracts.GetContent()
-//    ) { uri: Uri? ->
-//        uri?.let { selectedImage ->
-//            coroutineScope.launch {
-//                try {
-//                    val inputStream = context.contentResolver.openInputStream(selectedImage)
-//                    val bitmap = BitmapFactory.decodeStream(inputStream)
-//
-//                    val intArray = IntArray(bitmap.width * bitmap.height)
-//                    bitmap.getPixels(intArray, 0, bitmap.width, 0, 0, bitmap.width, bitmap.height)
-//
-//                    val source = RGBLuminanceSource(bitmap.width, bitmap.height, intArray)
-//                    val binaryBitmap = BinaryBitmap(HybridBinarizer(source))
-//                    val result = MultiFormatReader().decode(binaryBitmap)
-//
-//                    qrContent = result.text
-//                    saveToDatabase(result.text, db, auth)
-//                } catch (e: Exception) {
-//                    Toast.makeText(
-//                        context,
-//                        "Не вдалося зчитати QR-код з зображення. Переконайтеся, що на зображенні є QR-код",
-//                        Toast.LENGTH_LONG
-//                    ).show()
-//                    e.printStackTrace()
-//                }
-//            }
-//        }
-//    }
-//
-//    Column(
-//        modifier = Modifier
-//            .fillMaxSize()
-//            .background(Light)
-//            .padding(16.dp),
-//        horizontalAlignment = Alignment.CenterHorizontally,
-//        verticalArrangement = Arrangement.Center
-//    ) {
-//        if (showCamera) {
-//            CameraPreview(
-//                onQrCodeScanned = { content ->
-//                    qrContent = content
-//                    showCamera = false
-//                    coroutineScope.launch {
-//                        saveToDatabase(content, db, auth)
-//                    }
-//                }
-//            )
-//        } else {
-//            if (qrContent != null) {
-//                QrContentDisplay(content = qrContent!!)
-//            }
-//
-//            Spacer(modifier = Modifier.height(16.dp))
-//
-//            Row(
-//                modifier = Modifier.fillMaxWidth(),
-//                horizontalArrangement = Arrangement.SpaceEvenly
-//            ) {
-//                Button(
-//                    onClick = {
-//                        when (PackageManager.PERMISSION_GRANTED) {
-//                            ContextCompat.checkSelfPermission(
-//                                context,
-//                                Manifest.permission.CAMERA
-//                            ) -> showCamera = true
-//
-//                            else -> cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
-//                        }
-//                    }
-//                ) {
-//                    Icon(
-//                        painter = painterResource(id = R.drawable.camera),
-//                        contentDescription = "Camera"
-//                    )
-//                    Spacer(modifier = Modifier.width(8.dp))
-//                    Text("Сканувати камерою")
-//                }
-//
-//                Button(
-//                    onClick = { galleryLauncher.launch("image/*") }
-//                ) {
-//                    Icon(
-//                        painter = painterResource(id = R.drawable.gallery),
-//                        contentDescription = "Gallery"
-//                    )
-//                    Spacer(modifier = Modifier.width(8.dp))
-//                    Text("Вибрати з галереї")
-//                }
-//            }
-//        }
-//    }
-//}
+    LaunchedEffect(previewView) {
+        val cameraProvider = cameraProviderFuture.get()
+        val preview = Preview.Builder()
+            .build()
+            .also {
+                it.setSurfaceProvider(previewView.surfaceProvider)
+            }
 
-//@Composable
-//fun CameraPreview(
-//    onQrCodeScanned: (String) -> Unit
-//) {
-//    val context = LocalContext.current
-//    val lifecycleOwner = LocalLifecycleOwner.current
-//    val cameraProviderFuture = remember { ProcessCameraProvider.getInstance(context) }
-//    val scanner = remember { BarcodeScanning.getClient() }
-//    val executor = remember { Executors.newSingleThreadExecutor() }
-//
-//    DisposableEffect(Unit) {
-//        onDispose {
-//            executor.shutdown()
-//        }
-//    }
-//
-//    AndroidView(
-//        factory = { ctx ->
-//            PreviewView(ctx).apply {
-//                implementationMode = PreviewView.ImplementationMode.COMPATIBLE
-//            }
-//        },
-////        modifier = Modifier.fillMaxSize(),
-//        modifier = Modifier
-//            .fillMaxWidth()
-//            .aspectRatio(16f / 9f)
-//    ) { previewView ->
-//        cameraProviderFuture.addListener({
-//            val cameraProvider = cameraProviderFuture.get()
-//
-//            val preview = Preview.Builder().build().also {
-//                it.setSurfaceProvider(previewView.surfaceProvider)
-//            }
-//
-//            val imageAnalysis = ImageAnalysis.Builder()
-//                .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
-//                .build()
-//                .apply {
-//                    setAnalyzer(executor) @OptIn(androidx.camera.core.ExperimentalGetImage::class) { imageProxy ->
-//                        val mediaImage = imageProxy.image
-//                        if (mediaImage != null) {
-//                            val image = InputImage.fromMediaImage(
-//                                mediaImage,
-//                                imageProxy.imageInfo.rotationDegrees
-//                            )
-//
-//                            scanner.process(image)
-//                                .addOnSuccessListener { barcodes ->
-//                                    for (barcode in barcodes) {
-//                                        barcode.rawValue?.let { qrContent ->
-//                                            onQrCodeScanned(qrContent)
-//                                        }
-//                                    }
-//                                }
-//                                .addOnCompleteListener {
-//                                    imageProxy.close()
-//                                }
-//                        } else {
-//                            imageProxy.close()
-//                        }
-//                    }
-//                }
-//
-//            try {
-//                cameraProvider.unbindAll()
-//                cameraProvider.bindToLifecycle(
-//                    lifecycleOwner,
-//                    CameraSelector.DEFAULT_BACK_CAMERA,
-//                    preview,
-//                    imageAnalysis
-//                )
-//            } catch (e: Exception) {
-//                e.printStackTrace()
-//            }
-//        }, ContextCompat.getMainExecutor(context))
-//    }
-//}
-//
-//@Composable
-//fun QrContentDisplay(content: String) {
-//    Card(
-//        modifier = Modifier
-//            .fillMaxWidth()
-//            .padding(16.dp)
-//    ) {
-//        Column(
-//            modifier = Modifier.padding(16.dp)
-//        ) {
-//            Text(
-//                text = "Результат сканування:",
-//                style = MaterialTheme.typography.titleMedium
-//            )
-//            Spacer(modifier = Modifier.height(8.dp))
-//            Text(
-//                text = content,
-//                style = MaterialTheme.typography.bodyLarge
-//            )
-//        }
-//    }
-//}
-//
-//private suspend fun saveToDatabase(content: String, db: FirebaseFirestore, auth: FirebaseAuth) {
-//    auth.currentUser?.let { user ->
-//        try {
-//            val newScan = Scan(
-//                type = "scan",
-//                qrType = detectQrType(content),
-//                data = content,
-//                timestamp = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
-//                    .format(Date())
-//            )
-//
-//            val userDoc = db.collection("users").document(user.uid)
-//
-//            val userSnapshot = userDoc.get().await()
-//            val userData = userSnapshot.toObject(User::class.java)
-//
-//            val updatedScanHistory = (userData?.scanHistory ?: emptyList()) + newScan
-//
-//            userDoc.update("scanHistory", updatedScanHistory).await()
-//        } catch (e: Exception) {
-//            e.printStackTrace()
-//        }
-//    }
-//}
-//
-//private fun detectQrType(content: String): String {
-//    return when {
-//        content.startsWith("http") -> "URL"
-//        content.startsWith("mailto:") -> "EMAIL"
-//        content.startsWith("WIFI:") -> "WIFI"
-//        content.startsWith("geo:") -> "LOCATION"
-//        else -> "TEXT"
-//    }
-//}
+        val imageAnalyzer = ImageAnalysis.Builder()
+            .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+            .build()
+            .also {
+                it.setAnalyzer(
+                    ContextCompat.getMainExecutor(context)
+                ) { imageProxy ->
+                    processImageProxy(imageProxy, onQrCodeScanned)
+                }
+            }
+
+        try {
+            cameraProvider.unbindAll()
+            cameraProvider.bindToLifecycle(
+                lifecycleOwner,
+                CameraSelector.DEFAULT_BACK_CAMERA,
+                preview,
+                imageAnalyzer
+            )
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        AndroidView(
+            factory = { previewView },
+            modifier = Modifier.fillMaxSize()
+        )
+    }
+}
+
+private fun processImageProxy(
+    imageProxy: ImageProxy,
+    onQrCodeScanned: (QRData) -> Unit
+) {
+    val image = imageProxy.image
+    if (image != null) {
+        val inputImage = InputImage.fromMediaImage(
+            image,
+            imageProxy.imageInfo.rotationDegrees
+        )
+
+        val scanner = BarcodeScanning.getClient()
+        scanner.process(inputImage)
+            .addOnSuccessListener { barcodes ->
+                barcodes.firstOrNull()?.let { barcode ->
+                    val qrData = processQRContent(barcode)
+                    onQrCodeScanned(qrData)
+                }
+            }
+            .addOnCompleteListener {
+                imageProxy.close()
+            }
+    } else {
+        imageProxy.close()
+    }
+}
+
+private fun processImageFromGallery(
+    context: Context,
+    uri: Uri,
+    onResult: (QRData) -> Unit
+) {
+    try {
+        val image = InputImage.fromFilePath(context, uri)
+        val scanner = BarcodeScanning.getClient()
+
+        scanner.process(image)
+            .addOnSuccessListener { barcodes ->
+                barcodes.firstOrNull()?.let { barcode ->
+                    val qrData = processQRContent(barcode)
+                    onResult(qrData)
+                }
+            }
+            .addOnFailureListener {
+                Toast.makeText(
+                    context,
+                    "Помилка сканування: ${it.message}",
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+    } catch (e: Exception) {
+        e.printStackTrace()
+        Toast.makeText(
+            context,
+            "Помилка обробки зображення: ${e.message}",
+            Toast.LENGTH_SHORT
+        ).show()
+    }
+}
+
+fun processQRContent(barcode: Barcode): QRData {
+    return when (barcode.valueType) {
+        Barcode.TYPE_URL -> {
+            val url = barcode.url?.url ?: ""
+            QRData(
+                type = QRType.LINK,
+                displayText = "Лінк: $url",
+                rawData = url
+            )
+        }
+
+        Barcode.TYPE_TEXT -> {
+            val text = barcode.rawValue ?: ""
+            QRData(
+                type = QRType.TEXT,
+                displayText = "Текст: $text",
+                rawData = text
+            )
+        }
+
+        Barcode.TYPE_GEO -> {
+            val lat = barcode.geoPoint?.lat
+            val lng = barcode.geoPoint?.lng
+            val geoText = "Координати: $lat, $lng"
+            QRData(
+                type = QRType.GEO,
+                displayText = geoText,
+                rawData = mapOf("lat" to lat, "lng" to lng)
+            )
+        }
+
+        Barcode.TYPE_WIFI -> {
+            val ssid = barcode.wifi?.ssid ?: ""
+            val password = barcode.wifi?.password ?: ""
+            val encryptionType = barcode.wifi?.encryptionType ?: 0
+            val wifiText = "Wi-Fi мережа: $ssid"
+            QRData(
+                type = QRType.WIFI,
+                displayText = wifiText,
+                rawData = mapOf(
+                    "ssid" to ssid,
+                    "password" to password,
+                    "encryptionType" to encryptionType
+                )
+            )
+        }
+
+        Barcode.TYPE_EMAIL -> {
+            val email = barcode.email?.address ?: ""
+            val subject = barcode.email?.subject ?: ""
+            val body = barcode.email?.body ?: ""
+            val emailText = "Email: $email"
+            QRData(
+                type = QRType.EMAIL,
+                displayText = emailText,
+                rawData = mapOf(
+                    "email" to email,
+                    "subject" to subject,
+                    "body" to body
+                )
+            )
+        }
+
+        else -> QRData(
+            type = QRType.UNKNOWN,
+            displayText = barcode.rawValue ?: "Невідомий формат",
+            rawData = barcode.rawValue ?: ""
+        )
+    }
+}
+
+private fun saveToFirestore(userId: String, qrData: QRData) {
+    val db = FirebaseFirestore.getInstance()
+    val timestamp = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
+        .format(Date())
+
+    val scanHistory = ScanHistory(
+        userId = userId,
+        type = "scan",
+        qrType = qrData.type.displayName,
+        data = qrData.rawData,
+        createdAt = timestamp
+    )
+
+    db.collection("scan_history")
+        .add(scanHistory)
+        .addOnSuccessListener {
+            Log.d("Firestore", "Document successfully written")
+        }
+        .addOnFailureListener { e ->
+            Log.w("Firestore", "Error writing document", e)
+        }
+}
