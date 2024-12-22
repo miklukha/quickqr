@@ -8,13 +8,16 @@ data class ScanHistory(
     val createdAt: String = ""
 )
 
-enum class QRType(val displayName: String) {
-    LINK("Лінк"),
-    TEXT("Текст"),
-    EMAIL("Email"),
-    GEO("Гео"),
-    WIFI("Wi-Fi"),
-    UNKNOWN("Невідомий")
+data class HistoryItem(
+    val documentId: String,
+    val createdAt: String,
+    val type: String,
+    val qrType: String,
+    val data: Any
+)
+
+enum class QRType {
+    TEXT, LINK, EMAIL, GEO, WIFI, UNKNOWN
 }
 
 data class QRData(

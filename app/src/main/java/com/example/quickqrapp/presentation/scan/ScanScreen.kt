@@ -2,6 +2,7 @@ package com.example.quickqrapp.presentation.scan
 
 import android.Manifest
 import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.util.Log
@@ -72,6 +73,11 @@ import com.google.mlkit.vision.common.InputImage
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import android.net.wifi.WifiManager
+import android.net.wifi.WifiConfiguration
+import android.net.wifi.WifiNetworkSuggestion
+import android.provider.Settings
+import android.os.Build
 
 @Composable
 fun ScanScreen() {
@@ -98,15 +104,96 @@ fun ScanScreen() {
         }
     }
 
+    fun handleQRData(qrData: QRData) {
+        scannedData = qrData
+        if (user != null) {
+            saveToFirestore(user.uid, qrData)
+        }
+
+        when (qrData.type) {
+            QRType.LINK -> {
+                val url = (qrData.rawData as String)
+                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                context.startActivity(intent)
+            }
+
+            QRType.EMAIL -> {
+                val emailData = qrData.rawData as Map<*, *>
+                val intent = Intent(Intent.ACTION_SEND).apply {
+                    type = "message/rfc822"
+                    putExtra(Intent.EXTRA_EMAIL, arrayOf(emailData["address"] as String))
+                    putExtra(Intent.EXTRA_SUBJECT, emailData["subject"] as String)
+                    putExtra(Intent.EXTRA_TEXT, emailData["body"] as String)
+                }
+                try {
+                    context.startActivity(Intent.createChooser(intent, "Надіслати email..."))
+                } catch (e: Exception) {
+                    Toast.makeText(context, "Немає додатку для відправки email", Toast.LENGTH_SHORT)
+                        .show()
+                }
+            }
+
+            QRType.GEO -> {
+                val geoData = qrData.rawData as Map<*, *>
+                val lat = geoData["latitude"] as Double
+                val lng = geoData["longitude"] as Double
+                val geoUri = Uri.parse("geo:$lat,$lng?q=$lat,$lng")
+                val intent = Intent(Intent.ACTION_VIEW, geoUri)
+                try {
+                    context.startActivity(intent)
+                } catch (e: Exception) {
+                    Toast.makeText(context, "Немає додатку для перегляду карт", Toast.LENGTH_SHORT)
+                        .show()
+                }
+            }
+
+            QRType.WIFI -> {
+                val wifiData = qrData.rawData as Map<*, *>
+                val wifiManager = context.getSystemService(Context.WIFI_SERVICE) as WifiManager
+
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    // For Android 10 and above
+                    val suggestion = WifiNetworkSuggestion.Builder()
+                        .setSsid(wifiData["name"] as String)
+                        .setWpa2Passphrase(wifiData["password"] as String)
+                        .build()
+
+                    val suggestions = listOf(suggestion)
+                    wifiManager.addNetworkSuggestions(suggestions)
+
+                    val intent = Intent(Settings.Panel.ACTION_WIFI)
+                    context.startActivity(intent)
+                } else {
+                    // For Android 9 and below
+                    @Suppress("DEPRECATION")
+                    val conf = WifiConfiguration().apply {
+                        SSID = "\"" + (wifiData["name"] as String) + "\""
+                        preSharedKey = "\"" + (wifiData["password"] as String) + "\""
+                    }
+
+                    @Suppress("DEPRECATION")
+                    wifiManager.addNetwork(conf)
+                    @Suppress("DEPRECATION")
+                    wifiManager.enableNetwork(conf.networkId, true)
+                    @Suppress("DEPRECATION")
+                    wifiManager.reconnect()
+                }
+
+                Toast.makeText(context, "Підключення до Wi-Fi...", Toast.LENGTH_SHORT).show()
+            }
+
+            QRType.TEXT, QRType.UNKNOWN -> {
+                // Just display the text, no additional action needed
+            }
+        }
+    }
+
     val galleryLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
         uri?.let {
             processImageFromGallery(context, it) { qrData ->
-                scannedData = qrData
-                if (user != null) {
-                    saveToFirestore(user.uid, qrData)
-                }
+                handleQRData(qrData)
             }
         }
     }
@@ -115,10 +202,7 @@ fun ScanScreen() {
         Box(modifier = Modifier.fillMaxSize()) {
             CameraPreview(
                 onQrCodeScanned = { qrData ->
-                    scannedData = qrData
-                    if (user != null) {
-                        saveToFirestore(user.uid, qrData)
-                    }
+                    handleQRData(qrData)
                     showCamera = false
                 },
                 onClose = { showCamera = false }
@@ -160,8 +244,7 @@ fun ScanScreen() {
             modifier = Modifier
                 .fillMaxSize()
                 .background(Light)
-                .padding(horizontal = 15.dp)
-                .padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally
+                .padding(horizontal = 15.dp), horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Spacer(modifier = Modifier.weight(1f))
             Image(
@@ -239,14 +322,6 @@ fun ScanScreen() {
                         fontSize = 16.sp,
                         color = Gray
                     )
-                    if (scannedData != null) {
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text = "Тип: ${scannedData?.type?.name}",
-                            fontSize = 14.sp,
-                            color = Gray
-                        )
-                    }
                 }
             }
             Spacer(modifier = Modifier.height(10.dp))
@@ -396,7 +471,7 @@ fun processQRContent(barcode: Barcode): QRData {
             val url = barcode.url?.url ?: ""
             QRData(
                 type = QRType.LINK,
-                displayText = "Лінк: $url",
+                displayText = url,
                 rawData = url
             )
         }
@@ -405,7 +480,7 @@ fun processQRContent(barcode: Barcode): QRData {
             val text = barcode.rawValue ?: ""
             QRData(
                 type = QRType.TEXT,
-                displayText = "Текст: $text",
+                displayText = text,
                 rawData = text
             )
         }
@@ -417,7 +492,7 @@ fun processQRContent(barcode: Barcode): QRData {
             QRData(
                 type = QRType.GEO,
                 displayText = geoText,
-                rawData = mapOf("lat" to lat, "lng" to lng)
+                rawData = mapOf("latitude" to lat, "longitude" to lng)
             )
         }
 
@@ -430,7 +505,7 @@ fun processQRContent(barcode: Barcode): QRData {
                 type = QRType.WIFI,
                 displayText = wifiText,
                 rawData = mapOf(
-                    "ssid" to ssid,
+                    "name" to ssid,
                     "password" to password,
                     "encryptionType" to encryptionType
                 )
@@ -446,7 +521,7 @@ fun processQRContent(barcode: Barcode): QRData {
                 type = QRType.EMAIL,
                 displayText = emailText,
                 rawData = mapOf(
-                    "email" to email,
+                    "address" to email,
                     "subject" to subject,
                     "body" to body
                 )
@@ -466,10 +541,22 @@ private fun saveToFirestore(userId: String, qrData: QRData) {
     val timestamp = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
         .format(Date())
 
+    fun getDisplayType(type: QRType): String {
+        return when (type) {
+            QRType.LINK -> "Лінк"
+            QRType.TEXT -> "Текст"
+            QRType.EMAIL -> "Email"
+            QRType.GEO -> "Гео"
+            QRType.WIFI -> "Wi-Fi"
+            QRType.UNKNOWN -> "Невідомий"
+        }
+    }
+
     val scanHistory = ScanHistory(
         userId = userId,
         type = "scan",
-        qrType = qrData.type.displayName,
+//        qrType = qrData.type.display,
+        qrType = getDisplayType(qrData.type),
         data = qrData.rawData,
         createdAt = timestamp
     )
