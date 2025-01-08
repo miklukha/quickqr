@@ -78,6 +78,7 @@ import android.net.wifi.WifiConfiguration
 import android.net.wifi.WifiNetworkSuggestion
 import android.provider.Settings
 import android.os.Build
+import kotlinx.coroutines.launch
 
 @Composable
 fun ScanScreen() {
@@ -85,6 +86,7 @@ fun ScanScreen() {
     val context = LocalContext.current
     var showCamera by remember { mutableStateOf(false) }
     val user = remember { Firebase.auth.currentUser }
+    var isScanning by remember { mutableStateOf(false) }
 
     var hasCameraPermission by remember {
         mutableStateOf(
@@ -105,85 +107,100 @@ fun ScanScreen() {
     }
 
     fun handleQRData(qrData: QRData) {
-        scannedData = qrData
-        if (user != null) {
-            saveToFirestore(user.uid, qrData)
-        }
-
-        when (qrData.type) {
-            QRType.LINK -> {
-                val url = (qrData.rawData as String)
-                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
-                context.startActivity(intent)
+        if (!isScanning) {
+            isScanning = true
+            scannedData = qrData
+            if (user != null) {
+                saveToFirestore(user.uid, qrData)
             }
 
-            QRType.EMAIL -> {
-                val emailData = qrData.rawData as Map<*, *>
-                val intent = Intent(Intent.ACTION_SEND).apply {
-                    type = "message/rfc822"
-                    putExtra(Intent.EXTRA_EMAIL, arrayOf(emailData["address"] as String))
-                    putExtra(Intent.EXTRA_SUBJECT, emailData["subject"] as String)
-                    putExtra(Intent.EXTRA_TEXT, emailData["body"] as String)
-                }
-                try {
-                    context.startActivity(Intent.createChooser(intent, "Надіслати email..."))
-                } catch (e: Exception) {
-                    Toast.makeText(context, "Немає додатку для відправки email", Toast.LENGTH_SHORT)
-                        .show()
-                }
-            }
-
-            QRType.GEO -> {
-                val geoData = qrData.rawData as Map<*, *>
-                val lat = geoData["latitude"] as Double
-                val lng = geoData["longitude"] as Double
-                val geoUri = Uri.parse("geo:$lat,$lng?q=$lat,$lng")
-                val intent = Intent(Intent.ACTION_VIEW, geoUri)
-                try {
+            when (qrData.type) {
+                QRType.LINK -> {
+                    val url = (qrData.rawData as String)
+                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
                     context.startActivity(intent)
-                } catch (e: Exception) {
-                    Toast.makeText(context, "Немає додатку для перегляду карт", Toast.LENGTH_SHORT)
-                        .show()
                 }
-            }
 
-            QRType.WIFI -> {
-                val wifiData = qrData.rawData as Map<*, *>
-                val wifiManager = context.getSystemService(Context.WIFI_SERVICE) as WifiManager
+                QRType.EMAIL -> {
+                    val emailData = qrData.rawData as Map<*, *>
+                    val intent = Intent(Intent.ACTION_SEND).apply {
+                        type = "message/rfc822"
+                        putExtra(Intent.EXTRA_EMAIL, arrayOf(emailData["address"] as String))
+                        putExtra(Intent.EXTRA_SUBJECT, emailData["subject"] as String)
+                        putExtra(Intent.EXTRA_TEXT, emailData["body"] as String)
+                    }
+                    try {
+                        context.startActivity(Intent.createChooser(intent, "Надіслати email..."))
+                    } catch (e: Exception) {
+                        Toast.makeText(
+                            context,
+                            "Немає додатку для відправки email",
+                            Toast.LENGTH_SHORT
+                        )
+                            .show()
+                    }
+                }
 
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    // For Android 10 and above
-                    val suggestion = WifiNetworkSuggestion.Builder()
-                        .setSsid(wifiData["name"] as String)
-                        .setWpa2Passphrase(wifiData["password"] as String)
-                        .build()
+                QRType.GEO -> {
+                    val geoData = qrData.rawData as Map<*, *>
+                    val lat = geoData["latitude"] as Double
+                    val lng = geoData["longitude"] as Double
+                    val geoUri = Uri.parse("geo:$lat,$lng?q=$lat,$lng")
+                    val intent = Intent(Intent.ACTION_VIEW, geoUri)
+                    try {
+                        context.startActivity(intent)
+                    } catch (e: Exception) {
+                        Toast.makeText(
+                            context,
+                            "Немає додатку для перегляду карт",
+                            Toast.LENGTH_SHORT
+                        )
+                            .show()
+                    }
+                }
 
-                    val suggestions = listOf(suggestion)
-                    wifiManager.addNetworkSuggestions(suggestions)
+                QRType.WIFI -> {
+                    val wifiData = qrData.rawData as Map<*, *>
+                    val wifiManager = context.getSystemService(Context.WIFI_SERVICE) as WifiManager
 
-                    val intent = Intent(Settings.Panel.ACTION_WIFI)
-                    context.startActivity(intent)
-                } else {
-                    // For Android 9 and below
-                    @Suppress("DEPRECATION")
-                    val conf = WifiConfiguration().apply {
-                        SSID = "\"" + (wifiData["name"] as String) + "\""
-                        preSharedKey = "\"" + (wifiData["password"] as String) + "\""
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                        val suggestion = WifiNetworkSuggestion.Builder()
+                            .setSsid(wifiData["name"] as String)
+                            .setWpa2Passphrase(wifiData["password"] as String)
+                            .build()
+
+                        val suggestions = listOf(suggestion)
+                        wifiManager.addNetworkSuggestions(suggestions)
+
+                        val intent = Intent(Settings.Panel.ACTION_WIFI)
+                        context.startActivity(intent)
+                    } else {
+                        @Suppress("DEPRECATION")
+                        val conf = WifiConfiguration().apply {
+                            SSID = "\"" + (wifiData["name"] as String) + "\""
+                            preSharedKey = "\"" + (wifiData["password"] as String) + "\""
+                        }
+
+                        @Suppress("DEPRECATION")
+                        wifiManager.addNetwork(conf)
+                        @Suppress("DEPRECATION")
+                        wifiManager.enableNetwork(conf.networkId, true)
+                        @Suppress("DEPRECATION")
+                        wifiManager.reconnect()
                     }
 
-                    @Suppress("DEPRECATION")
-                    wifiManager.addNetwork(conf)
-                    @Suppress("DEPRECATION")
-                    wifiManager.enableNetwork(conf.networkId, true)
-                    @Suppress("DEPRECATION")
-                    wifiManager.reconnect()
+                    Toast.makeText(context, "Підключення до Wi-Fi...", Toast.LENGTH_SHORT).show()
                 }
 
-                Toast.makeText(context, "Підключення до Wi-Fi...", Toast.LENGTH_SHORT).show()
+                QRType.TEXT, QRType.UNKNOWN -> {
+                }
             }
 
-            QRType.TEXT, QRType.UNKNOWN -> {
-                // Just display the text, no additional action needed
+            showCamera = false
+
+            kotlinx.coroutines.GlobalScope.launch {
+                kotlinx.coroutines.delay(1000)
+                isScanning = false
             }
         }
     }

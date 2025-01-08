@@ -23,6 +23,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.quickqrapp.R
+import com.example.quickqrapp.ui.theme.Black
 import com.example.quickqrapp.ui.theme.Blue
 import com.example.quickqrapp.ui.theme.Light
 import com.example.quickqrapp.ui.theme.White
@@ -44,8 +45,8 @@ fun InitialScreen(navigateToLogin: () -> Unit = {}, navigateToSignUp: () -> Unit
             )
         )
         Spacer(modifier = Modifier.weight(1f))
-        Text("Легка робота з", fontSize = 36.sp, fontWeight = FontWeight.Bold)
-        Text("QR-code", fontSize = 36.sp, fontWeight = FontWeight.Bold)
+        Text("Легка робота з", fontSize = 36.sp, fontWeight = FontWeight.Bold, color = Black)
+        Text("QR-code", fontSize = 36.sp, fontWeight = FontWeight.Bold, color = Black)
         Spacer(modifier = Modifier.weight(1f))
         Button(
             onClick = { navigateToSignUp() },

@@ -1,6 +1,7 @@
 package com.example.quickqrapp.presentation.generate
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.content.ContentValues
 import android.graphics.Bitmap
 import android.graphics.Color
@@ -80,6 +81,13 @@ import java.util.Locale
 import android.content.Context
 import android.content.pm.PackageManager
 import android.widget.Toast
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.width
+import androidx.compose.material3.CheckboxColors
+import androidx.compose.material3.CheckboxDefaults
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.LaunchedEffect
 import com.google.firebase.Firebase
 import com.google.firebase.auth.auth
@@ -89,8 +97,14 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.collectAsState
+import androidx.compose.ui.graphics.Color.Companion.Transparent
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.core.content.ContextCompat
+import com.example.quickqrapp.ui.theme.Disabled
+import com.example.quickqrapp.ui.theme.SelectedField
 
 
 class QRGeneratorViewModel : ViewModel() {
@@ -234,7 +248,7 @@ class QRGeneratorViewModel : ViewModel() {
                     append("H:").append(if (wifiHidden) "true" else "false").append(";")
                     append(";")
                 }
-                // MOVISTAR_1070 H3T3Rx7KUVHF99yjf93y
+                // MOVISTAR_1070 H3T3Rx7KUVHF99yJF93y
                 Pair(content, wifiData)
             }
 
@@ -400,6 +414,7 @@ class QRGeneratorViewModel : ViewModel() {
     }
 }
 
+@SuppressLint("StateFlowValueCalledInComposition")
 @Composable
 fun GenerateScreen() {
     val viewModel: QRGeneratorViewModel = viewModel()
@@ -407,6 +422,9 @@ fun GenerateScreen() {
     val qrBitmap by viewModel.qrBitmap.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val toastMessage by viewModel.toastMessage.collectAsState()
+
+    val focusManager = LocalFocusManager.current
+    val interactionSource = remember { MutableInteractionSource() }
 
     val scrollState = rememberScrollState()
 
@@ -434,304 +452,380 @@ fun GenerateScreen() {
         }
     }
 
-
-    Column(
+    Box(
         modifier = Modifier
             .fillMaxSize()
             .background(Light)
-            .padding(horizontal = 15.dp, vertical = 30.dp)
-            .verticalScroll(scrollState), horizontalAlignment = Alignment.CenterHorizontally
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null
+            ) {
+                focusManager.clearFocus()
+            }
     ) {
-        Spacer(modifier = Modifier.weight(1f))
 
-        Image(
-            painter = painterResource(id = R.drawable.logo),
-            contentDescription = "",
-            modifier = Modifier.clip(CircleShape)
-        )
-        Spacer(modifier = Modifier.height(20.dp))
-
-        Text(
-            "Оберіть тип інформації",
-            color = Black,
-            fontSize = 24.sp,
-            fontWeight = FontWeight.Bold
-        )
-
-        Spacer(modifier = Modifier.height(15.dp))
-
-        FlowRow(
-            modifier = Modifier.fillMaxWidth(),
-            mainAxisSpacing = 5.dp,
-            crossAxisSpacing = 5.dp,
-            mainAxisAlignment = FlowMainAxisAlignment.SpaceEvenly
-        ) {
-            qrTypes.forEach { type ->
-                OutlinedButton(
-                    onClick = { selectedType = type },
-                    border = BorderStroke(1.dp, if (selectedType == type) Blue else Gray),
-                    colors = ButtonDefaults.outlinedButtonColors(
-                        contentColor = if (selectedType == type) Blue else Black,
-                        containerColor = Light
-                    )
-                ) {
-                    Text(type)
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(20.dp))
-
-        when (selectedType) {
-            "Лінк" -> {
-                CustomTextField(
-                    value = urlText,
-                    onValueChange = { urlText = it },
-                    label = "Введіть URL"
-                )
-            }
-
-            "Текст" -> {
-                CustomTextField(
-                    value = simpleText,
-                    onValueChange = { simpleText = it },
-                    label = "Введіть текст"
-                )
-            }
-
-            "Email" -> {
-                CustomTextField(
-                    value = emailAddress,
-                    onValueChange = { emailAddress = it },
-                    label = "Email адреса"
-                )
-                Spacer(modifier = Modifier.height(5.dp))
-                CustomTextField(
-                    value = emailSubject,
-                    onValueChange = { emailSubject = it },
-                    label = "Тема"
-                )
-                Spacer(modifier = Modifier.height(5.dp))
-                CustomTextField(
-                    value = emailBody,
-                    onValueChange = { emailBody = it },
-                    label = "Лист"
-                )
-            }
-
-            "Гео" -> {
-                CustomTextField(
-                    value = latitude,
-                    onValueChange = { latitude = it },
-                    label = "Широта (приклад: 50.4546600)"
-                )
-                Spacer(modifier = Modifier.height(5.dp))
-                CustomTextField(
-                    value = longitude,
-                    onValueChange = { longitude = it },
-                    label = "Довгота (приклад: 30.5238000)"
-                )
-            }
-
-            "Wi-Fi" -> {
-                CustomTextField(
-                    value = wifiName,
-                    onValueChange = { wifiName = it },
-                    label = "Назва мережі"
-                )
-                Spacer(modifier = Modifier.height(5.dp))
-                CustomTextField(
-                    value = wifiType,
-                    onValueChange = { wifiType = it },
-                    label = "Тип мережі (WPA, WEP, nopass)",
-                )
-                Spacer(modifier = Modifier.height(5.dp))
-                CustomTextField(
-                    value = wifiPassword,
-                    onValueChange = { wifiPassword = it },
-                    label = "Пароль"
-                )
-                Spacer(modifier = Modifier.height(5.dp))
-                Row(
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Checkbox(
-                        checked = wifiHidden,
-                        onCheckedChange = { wifiHidden = it }
-                    )
-                    Text("Прихована")
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(30.dp))
-
-        Box(
+        Column(
             modifier = Modifier
-                .size(200.dp)
-                .border(width = 1.dp, color = Gray, shape = RoundedCornerShape(8.dp)),
-            contentAlignment = Alignment.Center
+                .fillMaxSize()
+                .background(Light)
+                .padding(horizontal = 15.dp, vertical = 30.dp)
+                .verticalScroll(scrollState), horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            if (isLoading) {
-                CircularProgressIndicator(color = Blue)
-            } else {
-                qrBitmap?.let { bitmap ->
-                    Image(
-                        bitmap = bitmap.asImageBitmap(),
-                        contentDescription = "Generated QR Code",
-                        modifier = Modifier.size(200.dp)
-                    )
-                } ?: Image(
-                    painter = painterResource(id = R.drawable.qr_placeholder),
-                    contentDescription = "QR Placeholder",
-                    modifier = Modifier.size(200.dp)
-                )
-            }
-        }
+            Spacer(modifier = Modifier.weight(1f))
 
-        Spacer(modifier = Modifier.height(20.dp))
-
-        Button(
-            onClick = {
-                val (content, data) = viewModel.getQRContent(
-                    selectedType = selectedType,
-                    urlText = urlText,
-                    simpleText = simpleText,
-                    emailAddress = emailAddress,
-                    emailSubject = emailSubject,
-                    emailBody = emailBody,
-                    latitude = latitude,
-                    longitude = longitude,
-                    wifiName = wifiName.trim(),
-                    wifiType = wifiType.trim().uppercase(),
-                    wifiPassword = wifiPassword,
-                    wifiHidden = wifiHidden
-                )
-
-                if (selectedType == "Лінк") {
-                    when {
-                        urlText.isBlank() -> {
-                            viewModel._toastMessage.value = "Вкажіть, будь ласка, посилання"
-                            return@Button
-                        }
-                    }
-                }
-
-                if (selectedType == "Текст") {
-                    when {
-                        simpleText.isBlank() -> {
-                            viewModel._toastMessage.value = "Вкажіть, будь ласка, текст"
-                            return@Button
-                        }
-                    }
-                }
-
-                if (selectedType == "Email") {
-                    when {
-                        emailAddress.isBlank() || emailSubject.isBlank() || emailBody.isBlank() -> {
-                            viewModel._toastMessage.value = "Всі поля обовʼязкові"
-                            return@Button
-                        }
-                    }
-                }
-
-                if (selectedType == "Гео") {
-                    when {
-                        latitude.isBlank() || longitude.isBlank() -> {
-                            viewModel._toastMessage.value = "Вкажіть, будь ласка, широту та довготу"
-                            return@Button
-                        }
-                    }
-
-                }
-
-                if (selectedType == "Wi-Fi") {
-                    when {
-                        wifiName.isBlank() || wifiPassword.isBlank() || wifiType.isBlank() -> {
-                            viewModel._toastMessage.value =
-                                "Всі поля обовʼязкові"
-                            return@Button
-                        }
-
-                        !listOf("WPA", "WEP", "nopass").contains(wifiType.uppercase()) -> {
-                            viewModel._toastMessage.value =
-                                "Валідні значення типу: WPA, WEP чи nopass"
-                            return@Button
-                        }
-                    }
-                }
-
-                if (content.isNotEmpty()) {
-                    viewModel.generateQRCode(selectedType, content)
-                    viewModel.saveQRCode(selectedType, data)
-                }
-            },
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(48.dp)
-                .border(1.dp, Blue, CircleShape),
-            colors = ButtonDefaults.buttonColors(containerColor = Light)
-        ) {
-            Text(
-                "Згенерувати",
-                color = Blue,
-                fontWeight = FontWeight.Bold,
-                fontSize = 16.sp
+            Image(
+                painter = painterResource(id = R.drawable.logo),
+                contentDescription = "",
+                modifier = Modifier.clip(CircleShape)
             )
-        }
+            Spacer(modifier = Modifier.height(20.dp))
 
-        Spacer(modifier = Modifier.height(10.dp))
+            Text(
+                "Оберіть тип інформації",
+                color = Black,
+                fontSize = 24.sp,
+                fontWeight = FontWeight.Bold
+            )
 
-        Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-            Button(
-                onClick = { downloadMenuExpanded = true },
+            Spacer(modifier = Modifier.height(15.dp))
+
+            FlowRow(
+                modifier = Modifier.fillMaxWidth(),
+                mainAxisSpacing = 5.dp,
+                crossAxisSpacing = 5.dp,
+                mainAxisAlignment = FlowMainAxisAlignment.SpaceEvenly
+            ) {
+                qrTypes.forEach { type ->
+                    OutlinedButton(
+                        onClick = { selectedType = type },
+                        border = BorderStroke(1.dp, if (selectedType == type) Blue else Gray),
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            contentColor = if (selectedType == type) Blue else Black,
+                            containerColor = Light
+                        )
+                    ) {
+                        Text(type)
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            when (selectedType) {
+                "Лінк" -> {
+                    CustomTextField(
+                        value = urlText,
+                        onValueChange = { urlText = it },
+                        label = "Введіть URL"
+                    )
+                }
+
+                "Текст" -> {
+                    CustomTextField(
+                        value = simpleText,
+                        onValueChange = { simpleText = it },
+                        label = "Введіть текст"
+                    )
+                }
+
+                "Email" -> {
+                    CustomTextField(
+                        value = emailAddress,
+                        onValueChange = { emailAddress = it },
+                        label = "Email адреса"
+                    )
+                    Spacer(modifier = Modifier.height(5.dp))
+                    CustomTextField(
+                        value = emailSubject,
+                        onValueChange = { emailSubject = it },
+                        label = "Тема"
+                    )
+                    Spacer(modifier = Modifier.height(5.dp))
+                    CustomTextField(
+                        value = emailBody,
+                        onValueChange = { emailBody = it },
+                        label = "Лист",
+                        modifier = Modifier.height(150.dp)
+                    )
+                }
+
+                "Гео" -> {
+                    CustomTextField(
+                        value = latitude,
+                        onValueChange = { latitude = it },
+                        label = "Широта (приклад: 50.4546600)"
+                    )
+                    Spacer(modifier = Modifier.height(5.dp))
+                    CustomTextField(
+                        value = longitude,
+                        onValueChange = { longitude = it },
+                        label = "Довгота (приклад: 30.5238000)"
+                    )
+                }
+
+                "Wi-Fi" -> {
+                    CustomTextField(
+                        value = wifiName,
+                        onValueChange = { wifiName = it },
+                        label = "Назва мережі"
+                    )
+                    Spacer(modifier = Modifier.height(10.dp))
+//                CustomTextField(
+//                    value = wifiType,
+//                    onValueChange = { wifiType = it },
+//                    label = "Тип мережі (WPA, WEP, nopass)",
+//                )
+                    var wifiTypeExpanded by remember { mutableStateOf(false) }
+                    val wifiTypes = listOf("WPA", "WEP", "nopass")
+
+                    Box(modifier = Modifier.fillMaxWidth()) {
+                        OutlinedButton(
+                            onClick = { wifiTypeExpanded = true },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(56.dp),
+                            shape = RoundedCornerShape(8.dp),
+                            contentPadding = PaddingValues(horizontal = 16.dp),
+                            border = BorderStroke(1.dp, Black)
+                        ) {
+                            Text(
+                                text = if (wifiType.isEmpty()) "Оберіть тип мережі" else wifiType,
+                                color = if (wifiType.isEmpty()) Gray else Black,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+//                                .align(alignment = Alignment.Start)
+                            )
+                        }
+
+                        DropdownMenu(
+                            expanded = wifiTypeExpanded,
+                            onDismissRequest = { wifiTypeExpanded = false },
+//                        modifier = Modifier.fillMaxWidth()
+                            modifier = Modifier
+                                .background(White)
+                                .width(with(LocalDensity.current) {
+                                    (LocalConfiguration.current.screenWidthDp - 30).dp
+                                })
+
+                        ) {
+                            wifiTypes.forEach { type ->
+                                DropdownMenuItem(
+                                    text = { Text(type, color = Black) },
+                                    onClick = {
+                                        wifiType = type
+                                        wifiTypeExpanded = false
+                                        if (type == "nopass") {
+                                            wifiPassword = ""
+                                        }
+                                    }
+                                )
+                            }
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(5.dp))
+                    if (wifiType != "nopass") {
+                        CustomTextField(
+                            value = wifiPassword,
+                            onValueChange = { wifiPassword = it },
+                            label = "Пароль"
+                        )
+                        Spacer(modifier = Modifier.height(5.dp))
+                    }
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Checkbox(
+                            checked = wifiHidden,
+                            onCheckedChange = { wifiHidden = it },
+                            colors = CheckboxDefaults.colors(
+                                disabledIndeterminateColor = Black,
+                                checkmarkColor = Black,
+                                uncheckedColor = Black
+                            )
+                        )
+                        Text("Прихована", color = Black)
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(30.dp))
+
+            Box(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .height(48.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Blue),
-                enabled = !isLoading && viewModel.qrBitmap.value != null
+                    .size(200.dp)
+                    .border(width = 1.dp, color = Gray, shape = RoundedCornerShape(8.dp)),
+                contentAlignment = Alignment.Center
             ) {
                 if (isLoading) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(24.dp),
-                        color = White
-                    )
+                    CircularProgressIndicator(color = Blue)
                 } else {
-                    Text(
-                        "Завантажити",
-                        color = White,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 16.sp,
-                        letterSpacing = 0.5.sp
+                    qrBitmap?.let { bitmap ->
+                        Image(
+                            bitmap = bitmap.asImageBitmap(),
+                            contentDescription = "Generated QR Code",
+                            modifier = Modifier.size(200.dp)
+                        )
+                    } ?: Image(
+                        painter = painterResource(id = R.drawable.qr_placeholder),
+                        contentDescription = "QR Placeholder",
+                        modifier = Modifier.size(200.dp)
                     )
                 }
             }
 
-            DropdownMenu(
-                expanded = downloadMenuExpanded,
-                onDismissRequest = { downloadMenuExpanded = false },
+            Spacer(modifier = Modifier.height(20.dp))
+
+            Button(
+                onClick = {
+                    val (content, data) = viewModel.getQRContent(
+                        selectedType = selectedType,
+                        urlText = urlText,
+                        simpleText = simpleText,
+                        emailAddress = emailAddress,
+                        emailSubject = emailSubject,
+                        emailBody = emailBody,
+                        latitude = latitude,
+                        longitude = longitude,
+                        wifiName = wifiName.trim(),
+                        wifiType = wifiType.trim().uppercase(),
+                        wifiPassword = wifiPassword,
+                        wifiHidden = wifiHidden
+                    )
+
+                    if (selectedType == "Лінк") {
+                        when {
+                            urlText.isBlank() -> {
+                                viewModel._toastMessage.value = "Вкажіть, будь ласка, посилання"
+                                return@Button
+                            }
+                        }
+                    }
+
+                    if (selectedType == "Текст") {
+                        when {
+                            simpleText.isBlank() -> {
+                                viewModel._toastMessage.value = "Вкажіть, будь ласка, текст"
+                                return@Button
+                            }
+                        }
+                    }
+
+                    if (selectedType == "Email") {
+                        when {
+                            emailAddress.isBlank() || emailSubject.isBlank() || emailBody.isBlank() -> {
+                                viewModel._toastMessage.value = "Всі поля обовʼязкові"
+                                return@Button
+                            }
+                        }
+                    }
+
+                    if (selectedType == "Гео") {
+                        when {
+                            latitude.isBlank() || longitude.isBlank() -> {
+                                viewModel._toastMessage.value =
+                                    "Вкажіть, будь ласка, широту та довготу"
+                                return@Button
+                            }
+                        }
+
+                    }
+
+                    if (selectedType == "Wi-Fi") {
+                        when {
+                            wifiName.isBlank() || wifiType.isBlank() ||
+                                    (wifiType != "nopass" && wifiPassword.isBlank()) -> {
+                                viewModel._toastMessage.value = "Всі поля обовʼязкові"
+                                return@Button
+                            }
+//                        wifiName.isBlank() || wifiPassword.isBlank() || wifiType.isBlank() -> {
+//                            viewModel._toastMessage.value =
+//                                "Всі поля обовʼязкові"
+//                            return@Button
+//                        }
+//
+//                        !listOf("WPA", "WEP", "nopass").contains(wifiType.uppercase()) -> {
+//                            viewModel._toastMessage.value =
+//                                "Валідні значення типу: WPA, WEP чи nopass"
+//                            return@Button
+//                        }
+                        }
+                    }
+
+                    if (content.isNotEmpty()) {
+                        viewModel.generateQRCode(selectedType, content)
+                        viewModel.saveQRCode(selectedType, data)
+                    }
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(48.dp)
+                    .border(1.dp, Blue, CircleShape),
+                colors = ButtonDefaults.buttonColors(containerColor = Light)
             ) {
-                DropdownMenuItem(
-                    text = { Text("JPG") },
-                    onClick = {
-                        downloadMenuExpanded = false
-                        viewModel.exportQRCode("jpg", context)
-                    }
+                Text(
+                    "Згенерувати",
+                    color = Blue,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 16.sp
                 )
-                DropdownMenuItem(
-                    text = { Text("SVG") },
-                    onClick = {
-                        downloadMenuExpanded = false
-                        viewModel.exportQRCode("svg", context)
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                Button(
+                    onClick = { downloadMenuExpanded = true },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(48.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Blue,
+                        disabledContainerColor = Disabled
+                    ),
+                    enabled = !isLoading && viewModel.qrBitmap.value != null
+                ) {
+                    if (isLoading) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(24.dp),
+                            color = White
+                        )
+                    } else {
+                        Text(
+                            "Завантажити",
+                            color = White,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 16.sp,
+                            letterSpacing = 0.5.sp
+                        )
                     }
-                )
-                DropdownMenuItem(
-                    text = { Text("PDF") },
-                    onClick = {
-                        downloadMenuExpanded = false
-                        viewModel.exportQRCode("pdf", context)
-                    }
-                )
+                }
+
+                DropdownMenu(
+                    expanded = downloadMenuExpanded,
+                    onDismissRequest = { downloadMenuExpanded = false },
+                ) {
+                    DropdownMenuItem(
+                        text = { Text("JPG") },
+                        onClick = {
+                            downloadMenuExpanded = false
+                            viewModel.exportQRCode("jpg", context)
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("SVG") },
+                        onClick = {
+                            downloadMenuExpanded = false
+                            viewModel.exportQRCode("svg", context)
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("PDF") },
+                        onClick = {
+                            downloadMenuExpanded = false
+                            viewModel.exportQRCode("pdf", context)
+                        }
+                    )
+                }
             }
         }
     }
@@ -755,6 +849,15 @@ fun CustomTextField(
         },
         modifier = modifier
             .fillMaxWidth(),
-        shape = RoundedCornerShape(8.dp)
+        shape = RoundedCornerShape(8.dp),
+        colors = TextFieldDefaults.colors(
+            unfocusedContainerColor = Transparent,
+            focusedContainerColor = SelectedField,
+            cursorColor = Blue,
+            unfocusedTextColor = Black,
+            focusedTextColor = Black,
+            unfocusedIndicatorColor = Black,
+            focusedIndicatorColor = Black,
+        ),
     )
 }

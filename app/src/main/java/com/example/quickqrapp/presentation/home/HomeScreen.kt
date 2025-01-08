@@ -98,12 +98,14 @@ fun HomeContent(navigateToInitial: () -> Unit) {
         Text(
             "Легка робота з",
             fontSize = 36.sp,
-            fontWeight = FontWeight.Bold
+            fontWeight = FontWeight.Bold,
+            color = Black
         )
         Text(
             "QR-code",
             fontSize = 36.sp,
-            fontWeight = FontWeight.Bold
+            fontWeight = FontWeight.Bold,
+            color = Black
         )
 
         Spacer(modifier = Modifier.weight(1f))
