@@ -4,7 +4,6 @@ import com.example.quickqrapp.ui.theme.QuickQRAppTheme
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
-import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.fillMaxSize

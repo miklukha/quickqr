@@ -20,7 +20,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Clear
-import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -247,19 +246,19 @@ fun HistoryItemCard(
                 item.data is Map<*, *> -> {
                     when (item.qrType) {
                         "Wi-Fi" -> {
-                            Text("Назва мережі: ${(item.data as Map<*, *>)["name"]}")
-                            Text("Пароль: ${(item.data as Map<*, *>)["password"]}")
+                            Text("Назва мережі: ${item.data["name"]}")
+                            Text("Пароль: ${item.data["password"]}")
                         }
 
                         "Email" -> {
-                            Text("Адреса: ${(item.data as Map<*, *>)["address"]}")
-                            Text("Тема: ${(item.data as Map<*, *>)["subject"]}")
-                            Text("Текст: ${(item.data as Map<*, *>)["body"]}")
+                            Text("Адреса: ${item.data["address"]}")
+                            Text("Тема: ${item.data["subject"]}")
+                            Text("Текст: ${item.data["body"]}")
                         }
 
                         "Гео" -> {
-                            Text("Широта: ${(item.data as Map<*, *>)["latitude"]}")
-                            Text("Довгота: ${(item.data as Map<*, *>)["longitude"]}")
+                            Text("Широта: ${item.data["latitude"]}")
+                            Text("Довгота: ${item.data["longitude"]}")
                         }
                     }
                 }

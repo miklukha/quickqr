@@ -78,8 +78,11 @@ import android.net.wifi.WifiConfiguration
 import android.net.wifi.WifiNetworkSuggestion
 import android.provider.Settings
 import android.os.Build
+import androidx.camera.core.ExperimentalGetImage
+import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.launch
 
+@OptIn(DelicateCoroutinesApi::class)
 @Composable
 fun ScanScreen() {
     var scannedData by remember { mutableStateOf<QRData?>(null) }
@@ -222,7 +225,6 @@ fun ScanScreen() {
                     handleQRData(qrData)
                     showCamera = false
                 },
-                onClose = { showCamera = false }
             )
 
             IconButton(
@@ -374,8 +376,7 @@ fun ScanScreen() {
 
 @Composable
 fun CameraPreview(
-    onQrCodeScanned: (QRData) -> Unit,
-    onClose: () -> Unit
+    onQrCodeScanned: (QRData) -> Unit
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -422,6 +423,7 @@ fun CameraPreview(
     }
 }
 
+@androidx.annotation.OptIn(ExperimentalGetImage::class)
 private fun processImageProxy(
     imageProxy: ImageProxy,
     onQrCodeScanned: (QRData) -> Unit
@@ -572,7 +574,6 @@ private fun saveToFirestore(userId: String, qrData: QRData) {
     val scanHistory = ScanHistory(
         userId = userId,
         type = "scan",
-//        qrType = qrData.type.display,
         qrType = getDisplayType(qrData.type),
         data = qrData.rawData,
         createdAt = timestamp

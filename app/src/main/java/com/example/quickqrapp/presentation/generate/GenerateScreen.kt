@@ -55,8 +55,6 @@ import com.example.quickqrapp.ui.theme.Light
 import com.example.quickqrapp.ui.theme.White
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.ViewModel
@@ -73,7 +71,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
-import java.io.ByteArrayOutputStream
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.EnumMap
@@ -81,11 +78,11 @@ import java.util.Locale
 import android.content.Context
 import android.content.pm.PackageManager
 import android.widget.Toast
+import androidx.annotation.RequiresApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.width
-import androidx.compose.material3.CheckboxColors
 import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.LaunchedEffect
@@ -93,13 +90,8 @@ import com.google.firebase.Firebase
 import com.google.firebase.auth.auth
 import com.google.firebase.firestore.firestore
 import com.google.firebase.storage.storage
-import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
-import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.graphics.Color.Companion.Transparent
 import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.core.content.ContextCompat
@@ -107,6 +99,7 @@ import com.example.quickqrapp.ui.theme.Disabled
 import com.example.quickqrapp.ui.theme.SelectedField
 
 
+@Suppress("IMPLICIT_CAST_TO_ANY")
 class QRGeneratorViewModel : ViewModel() {
     private val auth = Firebase.auth
     private val storage = Firebase.storage.reference
@@ -267,6 +260,7 @@ class QRGeneratorViewModel : ViewModel() {
         }
     }
 
+    @RequiresApi(Build.VERSION_CODES.Q)
     fun exportQRCode(format: String, context: Context) {
         if (!checkStoragePermission(context)) {
             _toastMessage.value = "Немає дозволу на збереження файлів"
@@ -310,6 +304,7 @@ class QRGeneratorViewModel : ViewModel() {
         }
     }
 
+    @RequiresApi(Build.VERSION_CODES.Q)
     private fun exportAsJPG(bitmap: Bitmap, filename: String, context: Context): Boolean {
         return try {
             val resolver = context.contentResolver
@@ -335,6 +330,7 @@ class QRGeneratorViewModel : ViewModel() {
         }
     }
 
+    @RequiresApi(Build.VERSION_CODES.Q)
     private fun exportAsSVG(bitmap: Bitmap, filename: String, context: Context): Boolean {
         return try {
             val svgBuilder = StringBuilder()
@@ -376,6 +372,7 @@ class QRGeneratorViewModel : ViewModel() {
         }
     }
 
+    @RequiresApi(Build.VERSION_CODES.Q)
     private fun exportAsPDF(bitmap: Bitmap, filename: String, context: Context): Boolean {
         return try {
             val contentValues = ContentValues().apply {
@@ -414,6 +411,7 @@ class QRGeneratorViewModel : ViewModel() {
     }
 }
 
+@RequiresApi(Build.VERSION_CODES.Q)
 @SuppressLint("StateFlowValueCalledInComposition")
 @Composable
 fun GenerateScreen() {
@@ -570,11 +568,6 @@ fun GenerateScreen() {
                         label = "Назва мережі"
                     )
                     Spacer(modifier = Modifier.height(10.dp))
-//                CustomTextField(
-//                    value = wifiType,
-//                    onValueChange = { wifiType = it },
-//                    label = "Тип мережі (WPA, WEP, nopass)",
-//                )
                     var wifiTypeExpanded by remember { mutableStateOf(false) }
                     val wifiTypes = listOf("WPA", "WEP", "nopass")
 
@@ -593,14 +586,12 @@ fun GenerateScreen() {
                                 color = if (wifiType.isEmpty()) Gray else Black,
                                 modifier = Modifier
                                     .fillMaxWidth()
-//                                .align(alignment = Alignment.Start)
                             )
                         }
 
                         DropdownMenu(
                             expanded = wifiTypeExpanded,
                             onDismissRequest = { wifiTypeExpanded = false },
-//                        modifier = Modifier.fillMaxWidth()
                             modifier = Modifier
                                 .background(White)
                                 .width(with(LocalDensity.current) {
@@ -737,17 +728,6 @@ fun GenerateScreen() {
                                 viewModel._toastMessage.value = "Всі поля обовʼязкові"
                                 return@Button
                             }
-//                        wifiName.isBlank() || wifiPassword.isBlank() || wifiType.isBlank() -> {
-//                            viewModel._toastMessage.value =
-//                                "Всі поля обовʼязкові"
-//                            return@Button
-//                        }
-//
-//                        !listOf("WPA", "WEP", "nopass").contains(wifiType.uppercase()) -> {
-//                            viewModel._toastMessage.value =
-//                                "Валідні значення типу: WPA, WEP чи nopass"
-//                            return@Button
-//                        }
                         }
                     }
 
